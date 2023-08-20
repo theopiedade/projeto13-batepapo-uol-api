@@ -9,6 +9,10 @@ app.use(express.json());
 app.use(cors);
 dotenv.config();
 
+const nameSchema = joi.object({
+    name: joi.string().required()
+});
+
 const userSchema = joi.object({
     name: joi.string().required(),
     laststatus: joi.date().required()
@@ -29,7 +33,29 @@ mongoClient.connect()
  .then(() => db = mongoClient.db())
  .catch((err) => console.log(err.message));
 
+ app.post('/participants', async (req, res) => {
+    try {
+        const name = req.body;
+        
+        const validate = nameSchema.validate(name, { abortEarly: false })
+        if (validate.error) return res.sendStatus(422)
 
+        const checkname = await db.collection('participants').findOne({ _name: new name })
+        if (checkname) return res.sendStatus(409);
+        
+        const user = {
+            name: name,
+            lastStatus: Date.now()
+        }
+
+        await db.collection('participants').insertOne(user);
+  
+      res.sendStatus(201);
+    } catch (err) {
+      console.log(err);
+      res.sendStatus(500);
+    }
+  })
 
 
 const PORT = 5000
