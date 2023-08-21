@@ -39,7 +39,7 @@ const msgSchema = joi.object({
 
  app.post('/participants', async (req, res) => {
     const name = req.body.name;
-        
+    
     const validate = nameSchema.validate(req.body, { abortEarly: false })
     if (validate.error) return res.sendStatus(422)
 
