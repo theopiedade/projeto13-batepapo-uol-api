@@ -7,12 +7,11 @@ import dayjs from 'dayjs';
 
 const app = express();
 app.use(express.json());
-app.use(cors);
-
+app.use(cors());
 dotenv.config();
-//const dayjs = require('dayjs');
 dayjs().format();
 
+// DB Connection init
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 
 try {
@@ -23,7 +22,7 @@ try {
 }
 
 const db = mongoClient.db();
-
+// DB Connection end
 
 // JOI Schemas init 
 const nameSchema = joi.object({
@@ -39,43 +38,41 @@ const msgSchema = joi.object({
     from: joi.string().required(),
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().required(),
-    time: joi.string().required()
+    type: joi.string().valid("Todos", "private-message").required(),
 });
-// JOI Schemas end 
+// JOI Schemas end
 
  app.post('/participants', async (req, res) => {
+    const name = req.body;
+        
+    const validate = nameSchema.validate(name, { abortEarly: false })
+    if (validate.error) return res.sendStatus(422)
+
+    const checkname = await db.collection('participants').findOne({name})
+    if (checkname) return res.sendStatus(409);
+    
+    const user = {
+        name: name,
+        lastStatus: Date.now()
+    }
+
+     let time = dayjs(Date.now()).format('HH:mm:ss');
+
+     const msg = {
+         from: name,
+         to: 'Todos',
+         text: 'entra na sala...',
+         type: 'status',
+         time: time
+     }
+
     try {
-        const name = req.body;
-        
-        const validate = nameSchema.validate(name, { abortEarly: false })
-        if (validate.error) return res.sendStatus(422)
-
-        const checkname = await db.collection('participants').findOne({ _name: new name })
-        if (checkname) return res.sendStatus(409);
-        
-        const user = {
-            name: name,
-            lastStatus: Date.now()
-        }
         await db.collection('participants').insertOne(user);
-        
-        //let time = dayjs().get('hour')+':'+dayjs().get('minute')+':'+dayjs().get('second');
-        let time = dayjs(Date.now()).format('HH:mm:ss');
-
-        const msg = {
-            from: name,
-            to: 'Todos',
-            text: 'entra na sala...',
-            type: 'status',
-            time: time
-        }
         await db.collection('messages').insertOne(msg);
-  
-      res.sendStatus(201);
+        res.sendStatus(201);
     } catch (err) {
-      console.log(err);
-      res.sendStatus(500);
+        console.log(err);
+        res.sendStatus(500);
     }
   })
 
@@ -90,30 +87,29 @@ const msgSchema = joi.object({
   });
 
   app.post('/messages', async (req, res) => {
-    try {
-      const {to, text, type} = req.body;
-      const from = req.headers.user;
-      let time = dayjs(Date.now()).format('HH:mm:ss');
+        const {to, text, type} = req.body;
+        const from = req.headers.user;
+        let time = dayjs(Date.now()).format('HH:mm:ss');
 
-      const msg = {
+        const msg = {
         from: from,
         to: to,
         text: text,
         type: type,
         time: time
-      }
-      // to e text devem ser strings não vazias.
-      const validate = msgSchema.validate(msg, { abortEarly: false })
-      if (validate.error) return res.sendStatus(422);
+        }
+        // to e text devem ser strings não vazias.
+        const validate = msgSchema.validate(msg, { abortEarly: false })
+        if (validate.error) return res.sendStatus(422);
 
-      // type só pode ser message ou private_message.
-      if (type != 'message' || type != 'private_message') return res.sendStatus(422);
+        // type só pode ser message ou private_message.
+        if (type != 'message' || type != 'private_message') return res.sendStatus(422);
 
-      // from é obrigatório e deve ser um participante existente na lista 
-      // de participantes (ou seja, que está na sala).
-      const checkname = await db.collection('participants').findOne({ _name: new from })
-      if (!checkname) return res.sendStatus(422);
-
+        // from é obrigatório e deve ser um participante existente na lista 
+        // de participantes (ou seja, que está na sala).
+        const checkname = await db.collection('participants').findOne({ _name: new from })
+        if (!checkname) return res.sendStatus(422);
+    try {
       const message = await db.collection('messages').find().toArray();
       res.send(message);
       res.sendStatus(201);
@@ -124,10 +120,9 @@ const msgSchema = joi.object({
   });
 
   app.get('/messages', async (req, res) => {
+    const user = req.headers.user;
+    const limit = parseInt(req.query.limit);
     try {
-      const user = req.headers.user;
-      const limit = parseInt(req.query.limit);
-
       const messages = await db.collection('messages').find({
         to: "Todos", $or: [ {to: user}], $or: [ {from: user}]
         }).toArray();
@@ -144,22 +139,20 @@ const msgSchema = joi.object({
   });
 
   app.post('/status', async (req, res) => {
+    const user = req.headers.user;
+    if (!user) return res.sendStatus(404);
+
+    const checkname = await db.collection('participants').findOne({ _name: new user })
+    if (!checkname) return res.sendStatus(404);
+
+    const userEdit = {
+      name: user,
+      lastStatus: Date.now()
+  }
     try {
-      const user = req.headers.user;
-      if (!user) return res.sendStatus(404);
-
-      const checkname = await db.collection('participants').findOne({ _name: new user })
-      if (!checkname) return res.sendStatus(404);
-
-      const userEdit = {
-        name: user,
-        lastStatus: Date.now()
-    }
-   
       await db.collection("participants")
       .updateOne({ _name: new user }, { $set: userEdit});
-
-   
+  
       return res.sendStatus(200);
 
     } catch (error) {
