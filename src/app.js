@@ -82,9 +82,43 @@ mongoClient.connect()
     }
   });
 
+  app.post('/messages', async (req, res) => {
+    try {
+      const {to, text, type} = req.body;
+      const from = req.headers.user;
+      let time = dayjs(Date.now()).format('HH:mm:ss');
+
+      const msg = {
+        from: from,
+        to: to,
+        text: text,
+        type: type,
+        time: time
+      }
+      // to e text devem ser strings não vazias.
+      const validate = msgSchema.validate(msg, { abortEarly: false })
+      if (validate.error) return res.sendStatus(422);
+
+      // type só pode ser message ou private_message.
+      if (type != 'message' || type != 'private_message') return res.sendStatus(422);
+
+      // from é obrigatório e deve ser um participante existente na lista de participantes 
+      // (ou seja, que está na sala).
+      const checkname = await db.collection('participants').findOne({ _name: new from })
+      if (!checkname) return res.sendStatus(422);
+
+      const message = await db.collection('messages').find().toArray();
+      res.send(message);
+      res.sendStatus(201);
+    } catch (error) {
+      console.error(error);
+      res.sendStatus(422);
+    }
+  });
+
   
 
-  const { senha, email, idade } = req.body
+  
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`))
