@@ -8,11 +8,24 @@ import dayjs from 'dayjs';
 const app = express();
 app.use(express.json());
 app.use(cors);
+
 dotenv.config();
 //const dayjs = require('dayjs');
 dayjs().format();
 
+const mongoClient = new MongoClient(process.env.DATABASE_URL);
 
+try {
+	await mongoClient.connect();
+	console.log('MongoDB Connected!');
+} catch (err) {
+  console.log(err.message);
+}
+
+const db = mongoClient.db();
+
+
+// JOI Schemas init 
 const nameSchema = joi.object({
     name: joi.string().required()
 });
@@ -29,13 +42,7 @@ const msgSchema = joi.object({
     type: joi.string().required(),
     time: joi.string().required()
 });
-
-const mongoClient = new MongoClient(process.env.DATABASE_URL);
-let db;
-
-mongoClient.connect()
- .then(() => db = mongoClient.db())
- .catch((err) => console.log(err.message));
+// JOI Schemas end 
 
  app.post('/participants', async (req, res) => {
     try {
