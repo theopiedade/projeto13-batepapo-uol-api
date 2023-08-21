@@ -33,14 +33,15 @@ const msgSchema = joi.object({
     from: joi.string().required(),
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().valid("Todos", "private-message").required(),
+    type: joi.string().valid("message", "private-message").required(),
+    time: joi.string().required()
 });
 // JOI Schemas end
 
  app.post('/participants', async (req, res) => {
     const name = req.body.name;
         
-    const validate = nameSchema.validate(req.body, { abortEarly: false })
+    const validate = nameSchema.validate(name, { abortEarly: false })
     if (validate.error) return res.sendStatus(422)
 
     const checkname = await db.collection('participants').findOne({name})
@@ -64,6 +65,7 @@ const msgSchema = joi.object({
         await db.collection('participants').insertOne(user);
         await db.collection('messages').insertOne(msg);
         res.sendStatus(201);
+        return
     } catch (err) {
         console.log(err);
         res.sendStatus(500);
@@ -86,22 +88,20 @@ const msgSchema = joi.object({
         let time = dayjs(Date.now()).format('HH:mm:ss');
 
         const msg = {
-        from: from,
-        to: to,
-        text: text,
-        type: type,
-        time: time
+            from: from,
+            to: to,
+            text: text,
+            type: type,
+            time: time
         }
         // to e text devem ser strings não vazias.
+        // type só pode ser message ou private_message.
         const validate = msgSchema.validate(msg, { abortEarly: false })
         if (validate.error) return res.sendStatus(422);
 
-        // type só pode ser message ou private_message.
-        if (type != 'message' || type != 'private_message') return res.sendStatus(422);
-
         // from é obrigatório e deve ser um participante existente na lista 
         // de participantes (ou seja, que está na sala).
-        const checkname = await db.collection('participants').findOne({ _name: new from })
+        const checkname = await db.collection('participants').findOne({from})
         if (!checkname) return res.sendStatus(422);
     try {
       const message = await db.collection('messages').find().toArray();
