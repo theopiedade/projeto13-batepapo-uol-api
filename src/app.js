@@ -34,7 +34,6 @@ const msgSchema = joi.object({
     to: joi.string().required(),
     text: joi.string().required(),
     type: joi.string().valid("message", "private-message").required(),
-    time: joi.string().required()
 });
 // JOI Schemas end
 
