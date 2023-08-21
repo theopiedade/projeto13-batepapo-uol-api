@@ -72,6 +72,19 @@ mongoClient.connect()
     }
   })
 
+  app.get('/participants', async (req, res) => {
+    try {
+      const participants = await db.collection('participants').find().toArray();
+      res.send(participants);
+    } catch (error) {
+      console.error(error);
+      res.sendStatus(500);
+    }
+  });
+
+  
+
+  const { senha, email, idade } = req.body
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`))
