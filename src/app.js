@@ -29,11 +29,6 @@ const nameSchema = joi.object({
     name: joi.string().required()
 });
 
-const userSchema = joi.object({
-    name: joi.string().required(),
-    laststatus: joi.date().required()
-});
-
 const msgSchema = joi.object({
     from: joi.string().required(),
     to: joi.string().required(),
@@ -43,9 +38,9 @@ const msgSchema = joi.object({
 // JOI Schemas end
 
  app.post('/participants', async (req, res) => {
-    const name = req.body;
+    const name = req.body.name;
         
-    const validate = nameSchema.validate(name, { abortEarly: false })
+    const validate = nameSchema.validate(req.body, { abortEarly: false })
     if (validate.error) return res.sendStatus(422)
 
     const checkname = await db.collection('participants').findOne({name})
@@ -56,14 +51,13 @@ const msgSchema = joi.object({
         lastStatus: Date.now()
     }
 
-     let time = dayjs(Date.now()).format('HH:mm:ss');
 
      const msg = {
          from: name,
          to: 'Todos',
          text: 'entra na sala...',
          type: 'status',
-         time: time
+         time: dayjs(Date.now()).format('HH:mm:ss')
      }
 
     try {
