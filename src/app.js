@@ -125,11 +125,36 @@ mongoClient.connect()
         to: "Todos", $or: [ {to: user}], $or: [ {from: user}]
         }).toArray();
 
-      if (limit == undefined || limit <= 0) res.sendStatus(422);
+      if (limit == undefined || limit <= 0) return res.sendStatus(422);
       else {
         messages.slice(-1*limit);
         res.send(messages);
       }
+    } catch (error) {
+      console.error(error);
+      res.sendStatus(500);
+    }
+  });
+
+  app.post('/status', async (req, res) => {
+    try {
+      const user = req.headers.user;
+      if (!user) return res.sendStatus(404);
+
+      const checkname = await db.collection('participants').findOne({ _name: new user })
+      if (!checkname) return res.sendStatus(404);
+
+      const userEdit = {
+        name: user,
+        lastStatus: Date.now()
+    }
+   
+      await db.collection("participants")
+      .updateOne({ _name: new user }, { $set: userEdit});
+
+   
+      return res.sendStatus(200);
+
     } catch (error) {
       console.error(error);
       res.sendStatus(500);
