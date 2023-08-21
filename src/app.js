@@ -102,8 +102,8 @@ mongoClient.connect()
       // type só pode ser message ou private_message.
       if (type != 'message' || type != 'private_message') return res.sendStatus(422);
 
-      // from é obrigatório e deve ser um participante existente na lista de participantes 
-      // (ou seja, que está na sala).
+      // from é obrigatório e deve ser um participante existente na lista 
+      // de participantes (ou seja, que está na sala).
       const checkname = await db.collection('participants').findOne({ _name: new from })
       if (!checkname) return res.sendStatus(422);
 
@@ -116,9 +116,25 @@ mongoClient.connect()
     }
   });
 
-  
+  app.get('/messages', async (req, res) => {
+    try {
+      const user = req.headers.user;
+      const limit = parseInt(req.query.limit);
 
-  
+      const messages = await db.collection('messages').find({
+        to: "Todos", $or: [ {to: user}], $or: [ {from: user}]
+        }).toArray();
+
+      if (limit == undefined || limit <= 0) res.sendStatus(422);
+      else {
+        messages.slice(-1*limit);
+        res.send(messages);
+      }
+    } catch (error) {
+      console.error(error);
+      res.sendStatus(500);
+    }
+  });
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`Rodando na porta ${PORT}`))
